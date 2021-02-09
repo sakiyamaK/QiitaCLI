@@ -1,25 +1,43 @@
 import Foundation
-import SwiftShell
 import QiitaCLICore
 import Dispatch
+import ArgumentParser
 
-let env = ProcessInfo().environment
-let args = main.arguments
-
-if let debugPath = env["WorkingDirectory"] {
-  main.currentdirectory = debugPath
+struct RuntimeError: Error, CustomStringConvertible {
+  var description: String
+  init(_ description: String) {
+    self.description = description
+  }
 }
 
-do {
-  guard let keyword = args.first else {
-    throw NSError.init(domain: "keyword nothing", code: 99, userInfo: nil)
+struct Qiita: ParsableCommand {
+  static var configuration = CommandConfiguration(
+    commandName: "QiitaCLI",
+    abstract: "Search articles from Qiita with word",
+    discussion: """
+        Search articles from Qiita with word
+        """,
+    version: "1.0.0",
+    shouldDisplay: true,
+    //subcommands: T##[ParsableCommand.Type], // non use
+    //defaultSubcommand: T##ParsableCommand.Type?, // non use
+    helpNames: [.long, .short]
+  )
+
+  @Argument(help: "please input search word")
+  var keyword:  String
+
+  func run() throws {
+    guard keyword.count > 0 else {
+      throw(RuntimeError("please input search word"))
+    }
+    let q = QiitaCore(keyword: keyword)
+    q.search { result in
+      print("result: \(result ?? "")")
+      Qiita.exit()
+    }
+    dispatchMain()
   }
-  let q = Qiita(keyword: keyword)
-  q.search { result in 
-    print("result: \(result ?? "")")
-    exit(0)
-  }
-  dispatchMain()
-} catch {
-  exit(error)
 }
+
+Qiita.main()
